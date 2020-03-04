@@ -120,18 +120,18 @@ module type RAW = sig
     -> ztmp:Cstruct.t
     -> t
     -> (string, E.error) result
-  (** [to_deflated_raw ?capacity ?level ~ztmp value] serializes and deflates
-      the value [value]. [capacity] is the memory consumption of the encoder in
-      bytes (default to [0x100]), [level] is the level of the compression
-      (default to [4]) and [ztmp] is an internal buffer used to store the
-      serialized value before the {i deflation}.
+  (** [to_deflated_raw raw etmp ?level ~ztmp value] serializes and deflates
+      the value [value]. [level] is the level of the compression (default 
+      to [4]). [ztmp] is an internal buffer used to store the serialized 
+      value before the {i deflation}. [raw] and [etmp] are similar internal
+      buffers.
 
       All error from the {!Deflate} module is relayed to the [`Deflate] error
       value. *)
 
   val to_raw : raw:Cstruct.t -> etmp:Cstruct.t -> t -> (string, EncoderRaw.error) result
-  (** [to_raw ?capacity value] serializes the value [value]. [capacity] is the
-      memory consumption of the encoder in bytes (default to [0x100]).
+  (** [to_raw raw etmp value] serializes the value [value]. [raw] and [etmp]
+   *  are internal buffers used in the encoding/decoding of Git objects.).
 
       This function can not returns an {!EE.error} (see {!EE}). *)
 
