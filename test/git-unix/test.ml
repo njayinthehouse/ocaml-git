@@ -140,6 +140,32 @@ module Fs = struct
   let has_global_checkout = Git_unix.Fs.has_global_checkout
 end
 
+module Cass_fs = struct
+  type error = Git_unix.Cass.Fs.error
+  type t = Git_unix.Cass.Fs.t
+
+  let pp_error = Git_unix.Cass.Fs.pp_error
+  let is_dir = Git_unix.Cass.Fs.is_dir
+  let is_file = Git_unix.Cass.Fs.is_file
+
+  module File = struct
+    include Git_unix.Cass.Fs.File
+
+    let move t path_a path_b =
+      let open Lwt.Infix in
+      Lwt.try_bind
+        (fun () -> Lwt_unix.stat (Fpath.to_string path_b))
+        (fun _stat ->
+          delete t path_b
+          >>= function
+          | Ok () -> move t path_a path_b | Error _ as err -> Lwt.return err )
+        (fun _exn -> move t path_a path_b)
+  end
+
+  module Dir = Git_unix.Fs.Dir
+  module Mapper = Git_unix.Fs.Mapper
+end
+
 module Fs_store = struct
   module I = Git.Inflate
   module D = Git.Deflate
@@ -149,6 +175,14 @@ module Fs_store = struct
     v ?dotgit ?compression ?buffer () root
 
   let v root = v root
+end
+
+module Cass_store = struct
+  module I = Git.Inflate
+  module D = Git.Deflate
+  include Git.Store.Make (Digestif.SHA1) (Cass_fs) (I) (D)
+
+  let v root = v root "172.17.0.3"
 end
 
 module Thin = Test_thin.Make (struct
@@ -191,6 +225,10 @@ let () =
     ; Test_data.suite "fs" (module Test_data.Usual) (module Fs_store)
     ; Test_data.suite "fs" (module Test_data.Bomb) (module Fs_store)
     ; Test_data.suite "fs" (module Test_data.Udns) (module Fs_store)
+    ; Test_store.suite "cass_fs" (module Cass_fs_store)
+    ; Test_data.suite "cass_fs" (module Test_data.Usual) (module Cass_fs_store)
+    ; Test_data.suite "cass_fs" (module Test_data.Bomb) (module Cass_fs_store)
+    ; Test_data.suite "cass_fs" (module Test_data.Udns) (module Cass_fs_store)
     ; Index.suite Fpath.(v (Unix.getcwd ()) / "test-index")
     ; Test_smart.suite "smart (mem)" (module Mem_store)
     ; Test_smart.suite "smart (fs)" (module Fs_store)
@@ -198,10 +236,15 @@ let () =
          oracle (git) needs a well-formed git repository to work. However, the
          tested part belongs the core, so if it's work for git-unix, it should
          work to git-mem/git-mirage. *)
+    ; Test_smart.suite "smart (cass_fs)" (module Cass_fs_store)
     ; Test_rev_list.suite "fs"
         (module Test_data.Usual)
         (module Fs_store)
         (module Test_rev_list.Usual (Fs_store))
+    ; Test_rev_list.suite "cass_fs"
+        (module Test_data.Usual)
+        (module Cass_fs_store)
+        (module Test_rev_list.Usual (Cass_fs_store))
     ; Tcp1.test_fetch "mem-local-tcp-sync" [Uri.of_string "git://localhost/"]
     ; Tcp1.test_clone "mem-remote-tcp-sync"
         [ Uri.of_string "git://github.com/mirage/ocaml-git.git", "master"

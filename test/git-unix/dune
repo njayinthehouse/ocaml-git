@@ -2,8 +2,8 @@
  (name      test)
  (libraries checkseum.c digestif.c test_git test_smart test_smart_regression git-unix))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (package git-unix)
  (deps test.exe
        ../data/pack.idx ../data/pack.pack

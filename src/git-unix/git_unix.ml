@@ -16,6 +16,7 @@
 
 module Fs = Fs
 module Net = Net
+module Cass_fs = Cass.Fs
 
 type endpoint = Net.endpoint = {uri: Uri.t; headers: Cohttp.Header.t}
 
@@ -120,4 +121,35 @@ module Store = struct
 
   let v ?dotgit ?compression ?buffer root =
     v ?dotgit ?compression ?buffer () root
+end
+
+module Cass_store = struct
+  module I = Git.Inflate
+  module D = Git.Deflate
+  include Git.Store.Make (Digestif.SHA1) (Cass_fs) (I) (D)
+
+  let v ?dotgit ?compression ?buffer root ip =
+    let open Cass in
+    (* Create session, cluster, and connect them *)
+    let session = ml_cass_session_new () in
+    let cluster = ml_cass_cluster_new () in
+    ml_cass_cluster_set_contact_points cluster ip;
+    let future = ml_cass_session_connect session cluster in
+    ml_cass_future_wait future;
+    let response = ml_cass_future_error_code future in
+    let is_cass_ok = cstub_match_enum response future in
+    if is_cass_ok then
+      let future = execute_query' session create_keyspace in
+      ml_cass_future_free future;
+      let future = execute_query' session create_dir_table in
+      ml_cass_future_free future;
+      let future = execute_query' session create_file_table in
+      ml_cass_future_free future;
+      v ?dotgit ?compression ?buffer session root
+    else
+      Lwt.return_error `Malicious
+
+  let closeSession = Cass.ml_cass_session_free
+
+  let closeCluster = Cass.ml_cass_cluster_free
 end

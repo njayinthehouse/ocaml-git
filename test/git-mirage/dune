@@ -7,8 +7,8 @@
             tcpip.udpv4-socket tcpip.tcpv4-socket tcpip.unix
             tcpip.stack-socket mirage-clock-unix))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (package git-mirage)
  (deps test.exe
        ../data/pack.idx ../data/pack.pack

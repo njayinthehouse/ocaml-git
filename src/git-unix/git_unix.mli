@@ -17,6 +17,7 @@
 (** Unix backend. *)
 
 module Fs = Fs
+module Cass_fs = Cass.Fs
 module Net = Net
 module Index = Index
 
@@ -32,6 +33,24 @@ module Store : sig
     -> ?buffer:((buffer -> unit Lwt.t) -> unit Lwt.t)
     -> Fpath.t
     -> (t, error) result Lwt.t
+end
+
+module Cass_store : sig
+  include 
+    Git.Store.S
+    with module Hash = Git.Hash.Make (Digestif.SHA1)
+     and module FS := Cass_fs
+
+  val v :
+      ?dotgit:Fpath.t
+   -> ?compression:int
+   -> ?buffer:((buffer -> unit Lwt.t) -> unit Lwt.t)
+   -> Fpath.t
+   -> string 
+   -> (t, error) result Lwt.t
+
+  val closeSession : Cass.cassSession -> unit
+  val closeCluster : Cass.cassCluster -> unit
 end
 
 type endpoint = Net.endpoint = {uri: Uri.t; headers: Cohttp.Header.t}

@@ -3,8 +3,8 @@
  (libraries checkseum.ocaml digestif.ocaml test_git test_smart decompress
             fpath lwt))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (package git)
  (deps test.exe
        ../data/pack.idx ../data/pack.pack
